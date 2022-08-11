@@ -1,7 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { v4 as uuidV4 } from 'uuid';
+import  useLocalStorage  from '../hooks/useLocalStorage';
 
 const BudgetsContext = React.createContext();
+
+export const UNCATEGORIZED_BUDGET_ID = 'Uncategorized'
 
 export function useBudgets(){
  return useContext(BudgetsContext)
@@ -9,8 +12,8 @@ export function useBudgets(){
 
 export const BudgetProvider = ({ children }) => {
 
-    const [budgets, setBudgets] = useState([]);
-    const [expenses, setExpenses] = useState([])
+    const [budgets, setBudgets] = useLocalStorage("budgets",[]);
+    const [expenses, setExpenses] = useLocalStorage("expenses",[]);
 
     function getBudgetsExpenses(budgetId) {
         return expenses.filter(exp => exp.budgetId === budgetId);
@@ -31,15 +34,38 @@ export const BudgetProvider = ({ children }) => {
         })
     }
 
-    function deleteExpense({ id }) {
+    function editBudget({ id, name, max }) {
+
+        const editedBudget = {id:id, name: name, max: max };
+        setBudgets(prevBudgets => {
+            return prevBudgets.map(budget => budget.id === id ? editedBudget : budget);
+        })
+    }
+
+    function editExpense({ id, description,amount,budgetId }) {
+        const editedExpense = { id:id, description: description, amount: amount, budgetId:budgetId };
+        console.log(editedExpense);
         setExpenses(prevExpenses => {
-            return prevExpenses.filter(expense => expense.id !== id)
+            return prevExpenses.map(expense => expense.id === id ? editedExpense : expense)
         })
     }
 
     function deleteBudget({ id }) {
+        setExpenses(prevExpenses => {
+            return prevExpenses.map(expense => {
+                if (expense.budgetId !== id) return expense;
+                return { ...expense, budgetId: UNCATEGORIZED_BUDGET_ID}
+            })
+        })
+
         setBudgets(prevBudgets => {
             return prevBudgets.filter(budget => budget.id !== id)
+        })
+    }
+
+    function deleteExpense({ id }) {
+        setExpenses(prevExpenses => {
+            return prevExpenses.filter(expense => expense.id !== id)
         })
     }
 
@@ -49,6 +75,8 @@ export const BudgetProvider = ({ children }) => {
         getBudgetsExpenses,
         addExpense,
         addBudget,
+        editExpense,
+        editBudget,
         deleteBudget,
         deleteExpense
     }}>{children}</BudgetsContext.Provider>
